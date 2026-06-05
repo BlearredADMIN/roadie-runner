@@ -92,6 +92,7 @@
   const JUMP_V = -13;
 
   const obstacles = [];
+  const passes = [];
   const particles = [];
   const stars = [];
   const ground = [];
@@ -227,6 +228,14 @@
     return ob;
   }
 
+  function spawnPass() {
+    const high = Math.random() < 0.5;        // metà alti (da saltare), metà bassi (di corsa)
+    const w = 16, h = 22;
+    // basso: dentro il corpo del roadie a terra; alto: verso l'apice del salto
+    const y = high ? GROUND_Y - 130 : GROUND_Y - 40;
+    passes.push({ x: W + 20, y, w, h, taken: false });
+  }
+
   // Types safe to pair: ground obstacles that must be JUMPED over (no mic — you
   // must stay grounded — and no singer/large flightcase to avoid impossible
   // combos). Distance is tuned so a single jump (~150 px reach at speed 5)
@@ -234,6 +243,7 @@
   const PAIR_TYPES = ['flightcase_s', 'speaker', 'flame', 'flightcase_m'];
 
   let nextSpawn = 70;
+  let nextPass = 90;
 
   function reset() {
     state.over = false; state.speed = 5;
