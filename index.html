@@ -174,9 +174,11 @@
     if (type === 'speaker') { ob.w = 26; ob.h = 46; ob.y = GROUND_Y - ob.h; }
     else if (type === 'flame') { ob.w = 22; ob.h = 36; ob.y = GROUND_Y - ob.h; ob.phase = 0; }
     else if (type === 'co2') { ob.w = 18; ob.h = 50; ob.y = GROUND_Y - ob.h; ob.phase = Math.random() * 6; }
-    else if (type === 'flightcase_s') { ob.w = 32; ob.h = 24; ob.y = GROUND_Y - ob.h; }
-    else if (type === 'flightcase_m') { ob.w = 44; ob.h = 38; ob.y = GROUND_Y - ob.h; }
     else if (type === 'flightcase_l') { ob.w = 52; ob.h = 56; ob.y = GROUND_Y - ob.h; }
+    else if (type === 'transenna') { ob.w = 42; ob.h = 20; ob.y = GROUND_Y - ob.h; }
+    else if (type === 'testa_mobile') { ob.w = 24; ob.h = 46; ob.y = GROUND_Y - ob.h; ob.phase = Math.random() * 6; }
+    else if (type === 'batterista') { ob.w = 42; ob.h = 46; ob.y = GROUND_Y - ob.h; ob.phase = 0; }
+    else if (type === 'trabattello') { ob.w = 34; ob.h = 58; ob.y = GROUND_Y - ob.h; }
     else if (type === 'mic') { ob.w = 22; ob.h = 32; ob.y = GROUND_Y - 95; ob.phase = Math.random() * 6; }
     else if (type === 'singer') { ob.w = 28; ob.h = 64; ob.y = GROUND_Y - ob.h; ob.phase = 0; }
     return ob;
@@ -186,39 +188,46 @@
     const r = Math.random();
     const s = state.score;
     if (s < 100) {
-      // Tier 1: flightcase piccolo, cassa, CO2, microfono volante
-      if (r < 0.30) return 'flightcase_s';
-      if (r < 0.55) return 'speaker';
-      if (r < 0.75) return 'co2';
-      return 'mic';
+      // Tier 1: cassa, CO2, mic, testa mobile, transenna
+      if (r < 0.22) return 'speaker';
+      if (r < 0.42) return 'co2';
+      if (r < 0.60) return 'mic';
+      if (r < 0.82) return 'testa_mobile';
+      return 'transenna';
     }
     if (s < 250) {
-      // Tier 2: aggiungi fiamma e box medio
-      if (r < 0.22) return 'flightcase_s';
-      if (r < 0.37) return 'flightcase_m';
-      if (r < 0.54) return 'speaker';
-      if (r < 0.71) return 'flame';
-      if (r < 0.85) return 'co2';
-      return 'mic';
+      // Tier 2: + flightcase BLEARRED, fiamma, batterista
+      if (r < 0.14) return 'transenna';
+      if (r < 0.28) return 'testa_mobile';
+      if (r < 0.41) return 'speaker';
+      if (r < 0.53) return 'co2';
+      if (r < 0.65) return 'mic';
+      if (r < 0.77) return 'flightcase_l';
+      if (r < 0.89) return 'flame';
+      return 'batterista';
     }
     if (s < 450) {
-      // Tier 3: aggiungi box grande
-      if (r < 0.17) return 'flightcase_s';
-      if (r < 0.33) return 'flightcase_m';
-      if (r < 0.45) return 'flightcase_l';
-      if (r < 0.60) return 'speaker';
-      if (r < 0.74) return 'flame';
-      if (r < 0.86) return 'co2';
-      return 'mic';
+      // Tier 3: + trabattello
+      if (r < 0.12) return 'transenna';
+      if (r < 0.24) return 'testa_mobile';
+      if (r < 0.35) return 'speaker';
+      if (r < 0.46) return 'co2';
+      if (r < 0.57) return 'mic';
+      if (r < 0.68) return 'flightcase_l';
+      if (r < 0.79) return 'flame';
+      if (r < 0.90) return 'batterista';
+      return 'trabattello';
     }
-    // Tier 4: aggiungi il cantante
-    if (r < 0.13) return 'flightcase_s';
-    if (r < 0.24) return 'flightcase_m';
-    if (r < 0.37) return 'flightcase_l';
-    if (r < 0.48) return 'speaker';
-    if (r < 0.60) return 'flame';
-    if (r < 0.71) return 'co2';
-    if (r < 0.86) return 'mic';
+    // Tier 4: + cantante
+    if (r < 0.11) return 'transenna';
+    if (r < 0.22) return 'testa_mobile';
+    if (r < 0.32) return 'speaker';
+    if (r < 0.42) return 'co2';
+    if (r < 0.52) return 'mic';
+    if (r < 0.62) return 'flightcase_l';
+    if (r < 0.72) return 'flame';
+    if (r < 0.82) return 'batterista';
+    if (r < 0.91) return 'trabattello';
     return 'singer';
   }
 
@@ -240,7 +249,7 @@
   // must stay grounded — and no singer/large flightcase to avoid impossible
   // combos). Distance is tuned so a single jump (~150 px reach at speed 5)
   // isn't enough — you need the double-jump.
-  const PAIR_TYPES = ['flightcase_s', 'speaker', 'flame', 'flightcase_m'];
+  const PAIR_TYPES = ['speaker', 'flame', 'transenna', 'testa_mobile'];
 
   let nextSpawn = 70;
   let nextPass = 90;
@@ -794,7 +803,8 @@
       const ob = spawnObstacle();
       let blockW = ob.w;
 
-      const canPair = ob.type !== 'mic' && ob.type !== 'singer' && ob.type !== 'flightcase_l';
+      const canPair = ob.type !== 'mic' && ob.type !== 'singer' && ob.type !== 'flightcase_l'
+        && ob.type !== 'batterista' && ob.type !== 'trabattello';
       const pairChance = state.score < 100 ? 0.12 : state.score < 300 ? 0.20 : 0.28;
       if (canPair && Math.random() < pairChance) {
         const type2 = PAIR_TYPES[Math.floor(Math.random() * PAIR_TYPES.length)];
