@@ -1,0 +1,30 @@
+# Stato lavoro — Blearred RoadieRunner
+
+> Diario di bordo. Aggiornare a ogni sessione: Fatto / In corso / Prossimi passi.
+
+## Aggiornamento 2026-06-04
+
+### Fatto
+- **Riordino cartella**: c'erano 5 copie sparse del gioco. Verificato con
+  checksum che 4 erano **byte-identiche** (versione 21 mag, 823 righe,
+  `b8f0d02a…`); `roadie-runner.html` (20 mag, 526 righe) era una versione
+  vecchia.
+- Tenuta l'unica versione funzionante come **`index.html`** nella radice del
+  progetto.
+- Spostati nel Cestino (recuperabili): `roadie-runner.html`,
+  `Blearred RoadieRunner.html`, `Blearred-RoadieRunner.zip`.
+- Rimosse le cartelle duplicate `Blearred-RoadieRunner/` e
+  `Blearred-RoadieRunner 2/` (contenevano solo copie identiche di `index.html`).
+- Pulita la cartella padre `CLAUDE PROJECTS/`: rimosso `download.png` (era il
+  logo Anthropic, non un asset del gioco → Cestino). `README.md` conservato.
+- Creati i file mancanti: questo `STATO-LAVORO.md` e `CLAUDE.md`.
+
+### Stato attuale
+Cartella pulita, contiene solo: `index.html`, `CLAUDE.md`, `STATO-LAVORO.md`.
+Gioco completo e giocabile.
+
+### Possibili prossimi passi (idee, non confermate)
+- Aggiungere audio (jump / game over / musica di sottofondo).
+- Schermata "Aggiungi a Home" + icona app brandizzata Blearred.
+- Online: pubblicare su un dominio/URL Blearred per la condivisione.
+- Eventuale classifica condivisa (richiederebbe un backend).

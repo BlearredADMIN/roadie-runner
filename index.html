@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Roadie Runner</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: #0a0a0f;
+    color: #e8e8e8;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    overflow: hidden;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    overscroll-behavior: none;
+    position: fixed;
+    top: 0; left: 0;
+  }
+  #wrap {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: env(safe-area-inset-top) 8px env(safe-area-inset-bottom);
+  }
+  h1 {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: 3px;
+    color: #ff3860;
+    text-transform: uppercase;
+    text-align: center;
+  }
+  #info {
+    font-size: 11px;
+    color: #888;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+  canvas {
+    background: linear-gradient(to bottom, #1a1a2a 0%, #0a0a0f 70%, #1a1018 100%);
+    border: 1px solid #222;
+    box-shadow: 0 0 40px rgba(255, 56, 96, 0.15);
+    image-rendering: pixelated;
+    max-width: 100%;
+    max-height: calc(100dvh - 80px);
+    width: auto;
+    height: auto;
+    display: block;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>🎤 Roadie Runner 🔧</h1>
+  <canvas id="game" width="400" height="700"></canvas>
+  <div id="info">Tocca lo schermo per saltare</div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('game');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const GROUND_Y = H - 90;
+
+  const state = {
+    started: false,
+    over: false,
+    speed: 5,
+    score: 0,
+    best: parseInt(localStorage.getItem('roadie_best') || '0', 10),
+    t: 0,
+  };
+
+  const roadie = {
+    x: 70, y: GROUND_Y, vy: 0, w: 28, h: 44,
+    onGround: true, legPhase: 0, jumpsLeft: 2,
+  };
+
+  const GRAVITY = 0.7;
+  const JUMP_V = -13;
+
+  const obstacles = [];
+  const particles = [];
+  const stars = [];
+  const ground = [];
+
+  for (let i = 0; i < 80; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * (GROUND_Y - 40),
+      r: Math.random() * 1.5 + 0.3,
+      hue: Math.random() * 360,
+      flicker: Math.random() * Math.PI * 2,
+    });
+  }
+
+  for (let i = 0; i < 40; i++) {
+    ground.push({ x: i * 20, y: GROUND_Y + Math.random() * 6 });
+  }
+
+  function jump() {
+    if (state.over) { reset(); state.started = true; return; }
+    if (!state.started) { state.started = true; return; }
+    if (roadie.jumpsLeft > 0) {
+      const isDouble = !roadie.onGround;
+      roadie.vy = isDouble ? JUMP_V * 0.85 : JUMP_V;
+      roadie.onGround = false;
+      roadie.jumpsLeft--;
+      if (isDouble) {
+        for (let i = 0; i < 10; i++) {
+          particles.push({
+            x: roadie.x + 14 + (Math.random() - 0.5) * 10,
+            y: roadie.y - 4,
+            vx: (Math.random() - 0.5) * 3,
+            vy: Math.random() * 1.5 + 0.3,
+            life: 22,
+            col: 'rgba(255, 200, 100, 0.8)',
+            r: 1.5,
+          });
+        }
+      }
+    }
+  }
+
+  function handleInput(e) {
+    if (e && e.cancelable) e.preventDefault();
+    jump();
+  }
+
+  // unified input: use pointerdown when available (iOS 13+, all modern browsers)
+  // otherwise fall back to touchstart + mousedown. Never both: on iOS the same
+  // tap fires pointerdown AND touchstart, consuming two jumpsLeft at once and
+  // killing the double-jump.
+  let lastInputT = 0;
+  function handleInputDeduped(e) {
+    const now = performance.now();
+    if (now - lastInputT < 50) return;
+    lastInputT = now;
+    handleInput(e);
+  }
+  if (window.PointerEvent) {
+    document.addEventListener('pointerdown', handleInputDeduped);
+  } else {
+    document.addEventListener('touchstart', handleInputDeduped, { passive: false });
+    document.addEventListener('mousedown', handleInputDeduped);
+  }
+
+  // keyboard fallback (desktop)
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+      e.preventDefault(); jump();
+    }
+    if (e.code === 'KeyR') reset();
+  });
+
+  // block iOS pinch-zoom only (do NOT block touchmove globally — it kills taps)
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+
+  function makeObstacle(type, x) {
+    const ob = { type, x, hit: false };
+    if (type === 'speaker') { ob.w = 26; ob.h = 46; ob.y = GROUND_Y - ob.h; }
+    else if (type === 'flame') { ob.w = 22; ob.h = 36; ob.y = GROUND_Y - ob.h; ob.phase = 0; }
+    else if (type === 'co2') { ob.w = 18; ob.h = 50; ob.y = GROUND_Y - ob.h; ob.phase = Math.random() * 6; }
+    else if (type === 'flightcase_s') { ob.w = 32; ob.h = 24; ob.y = GROUND_Y - ob.h; }
+    else if (type === 'flightcase_m') { ob.w = 44; ob.h = 38; ob.y = GROUND_Y - ob.h; }
+    else if (type === 'flightcase_l') { ob.w = 52; ob.h = 56; ob.y = GROUND_Y - ob.h; }
+    else if (type === 'mic') { ob.w = 22; ob.h = 32; ob.y = GROUND_Y - 95; ob.phase = Math.random() * 6; }
+    else if (type === 'singer') { ob.w = 28; ob.h = 64; ob.y = GROUND_Y - ob.h; ob.phase = 0; }
+    return ob;
+  }
+
+  function pickObstacleType() {
+    const r = Math.random();
+    const s = state.score;
+    if (s < 100) {
+      // Tier 1: flightcase piccolo, cassa, CO2, microfono volante
+      if (r < 0.30) return 'flightcase_s';
+      if (r < 0.55) return 'speaker';
+      if (r < 0.75) return 'co2';
+      return 'mic';
+    }
+    if (s < 250) {
+      // Tier 2: aggiungi fiamma e box medio
+      if (r < 0.22) return 'flightcase_s';
+      if (r < 0.37) return 'flightcase_m';
+      if (r < 0.54) return 'speaker';
+      if (r < 0.71) return 'flame';
+      if (r < 0.85) return 'co2';
+      return 'mic';
+    }
+    if (s < 450) {
+      // Tier 3: aggiungi box grande
+      if (r < 0.17) return 'flightcase_s';
+      if (r < 0.33) return 'flightcase_m';
+      if (r < 0.45) return 'flightcase_l';
+      if (r < 0.60) return 'speaker';
+      if (r < 0.74) return 'flame';
+      if (r < 0.86) return 'co2';
+      return 'mic';
+    }
+    // Tier 4: aggiungi il cantante
+    if (r < 0.13) return 'flightcase_s';
+    if (r < 0.24) return 'flightcase_m';
+    if (r < 0.37) return 'flightcase_l';
+    if (r < 0.48) return 'speaker';
+    if (r < 0.60) return 'flame';
+    if (r < 0.71) return 'co2';
+    if (r < 0.86) return 'mic';
+    return 'singer';
+  }
+
+  function spawnObstacle() {
+    const ob = makeObstacle(pickObstacleType(), W + 20);
+    obstacles.push(ob);
+    return ob;
+  }
+
+  // Types safe to pair: ground obstacles that must be JUMPED over (no mic — you
+  // must stay grounded — and no singer/large flightcase to avoid impossible
+  // combos). Distance is tuned so a single jump (~150 px reach at speed 5)
+  // isn't enough — you need the double-jump.
+  const PAIR_TYPES = ['flightcase_s', 'speaker', 'flame', 'flightcase_m'];
+
+  let nextSpawn = 70;
+
+  function reset() {
+    state.over = false; state.speed = 5;
+    state.score = 0; state.t = 0;
+    obstacles.length = 0; particles.length = 0;
+    roadie.y = GROUND_Y; roadie.vy = 0; roadie.onGround = true; roadie.jumpsLeft = 2;
+    nextSpawn = 70;
+  }
+
+  function drawBackground() {
+    // colored stars
+    stars.forEach(s => {
+      s.flicker += 0.05;
+      const a = 0.4 + Math.sin(s.flicker) * 0.4;
+      ctx.fillStyle = `hsla(${s.hue}, 80%, 65%, ${a})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // truss bar at top
+    ctx.fillStyle = '#15151c';
+    ctx.fillRect(0, 0, W, 22);
+    ctx.strokeStyle = '#2a2a35';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < W; i += 18) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0); ctx.lineTo(i + 9, 22); ctx.lineTo(i + 18, 0);
+      ctx.stroke();
+    }
+
+    // hanging fixtures with light cones (decorative only — not obstacles)
+    for (let i = 30; i < W + 30; i += 80) {
+      ctx.fillStyle = '#2a2a35';
+      ctx.fillRect(i - 5, 22, 10, 8);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(i - 6, 30, 12, 6);
+
+      const hue = (state.t * 1.5 + i * 4) % 360;
+      const beamLen = GROUND_Y - 36;
+      const glow = ctx.createLinearGradient(i, 36, i, 36 + beamLen);
+      glow.addColorStop(0, `hsla(${hue}, 90%, 60%, 0.35)`);
+      glow.addColorStop(1, `hsla(${hue}, 90%, 60%, 0)`);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.moveTo(i - 5, 36);
+      ctx.lineTo(i - 50, GROUND_Y);
+      ctx.lineTo(i + 50, GROUND_Y);
+      ctx.lineTo(i + 5, 36);
+      ctx.closePath();
+      ctx.fill();
+
+      // lens
+      ctx.fillStyle = `hsl(${hue}, 90%, 65%)`;
+      ctx.fillRect(i - 3, 34, 6, 3);
+    }
+
+    // stage backdrop strip
+    const bdGrad = ctx.createLinearGradient(0, GROUND_Y - 120, 0, GROUND_Y);
+    bdGrad.addColorStop(0, 'rgba(40, 10, 30, 0)');
+    bdGrad.addColorStop(1, 'rgba(80, 20, 50, 0.4)');
+    ctx.fillStyle = bdGrad;
+    ctx.fillRect(0, GROUND_Y - 120, W, 120);
+  }
+
+  function drawGround() {
+    ctx.strokeStyle = '#3a3a48';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y);
+    ctx.stroke();
+
+    // serpentine cable
+    ctx.strokeStyle = '#1c1c24';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < W; i += 2) {
+      const y = GROUND_Y + 8 + Math.sin((i + state.t * 4) * 0.05) * 2;
+      if (i === 0) ctx.moveTo(i, y); else ctx.lineTo(i, y);
+    }
+    ctx.stroke();
+
+    ground.forEach(g => {
+      g.x -= state.speed;
+      if (g.x < -10) g.x += 40 * 20;
+      ctx.fillStyle = '#2a2a32';
+      ctx.fillRect(g.x, g.y, 3, 2);
+    });
+
+    // stage floor below ground line
+    ctx.fillStyle = '#0a0a10';
+    ctx.fillRect(0, GROUND_Y + 14, W, H - GROUND_Y - 14);
+  }
+
+  function drawRoadie() {
+    const x = roadie.x;
+    const y = roadie.y;
+    const h = roadie.h;
+
+    ctx.save();
+    ctx.translate(x, y - h);
+
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(roadie.w / 2, h + 2, 14, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const legSwing = roadie.onGround ? Math.sin(roadie.legPhase) * 4 : 0;
+    // pants / legs
+    ctx.fillStyle = '#2d2d35';
+    ctx.fillRect(7, 30, 5, 14 + (roadie.onGround ? 0 : -2));
+    ctx.fillRect(16, 30, 5, 14 + (roadie.onGround ? 0 : -2));
+    // shoes
+    ctx.fillStyle = '#0d0d0d';
+    ctx.fillRect(5 + legSwing, 42, 8, 3);
+    ctx.fillRect(15 - legSwing, 42, 8, 3);
+
+    // shirt
+    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(4, 16, 20, 16);
+    // band logo
+    ctx.fillStyle = '#ff3860'; ctx.fillRect(10, 20, 8, 2); ctx.fillRect(12, 24, 4, 2);
+
+    // arms
+    const armSwing = roadie.onGround ? Math.sin(roadie.legPhase + Math.PI) * 2 : -3;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 18 + armSwing, 5, 12);
+    ctx.fillRect(23, 18 - armSwing, 5, 12);
+    // hands
+    ctx.fillStyle = '#e0b48a';
+    ctx.fillRect(0, 28, 5, 3); ctx.fillRect(23, 28, 5, 3);
+    // gaffer roll in left hand
+    ctx.fillStyle = '#222'; ctx.fillRect(-3, 26, 6, 6);
+    ctx.fillStyle = '#444'; ctx.fillRect(-2, 27, 4, 4);
+
+    // head
+    ctx.fillStyle = '#e0b48a'; ctx.fillRect(8, 4, 12, 12);
+    // beard
+    ctx.fillStyle = '#2a1a10'; ctx.fillRect(8, 12, 12, 4);
+    // sunglasses
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(9, 8, 4, 3); ctx.fillRect(15, 8, 4, 3); ctx.fillRect(13, 9, 2, 1);
+    // cap
+    ctx.fillStyle = '#ff3860';
+    ctx.fillRect(7, 1, 14, 5); ctx.fillRect(5, 3, 3, 3);
+
+    // tool belt
+    ctx.fillStyle = '#5a3a1a'; ctx.fillRect(4, 30, 20, 3);
+    ctx.fillStyle = '#aaa'; ctx.fillRect(8, 30, 2, 4); ctx.fillRect(18, 30, 2, 4);
+
+    ctx.restore();
+  }
+
+  function drawSpeaker(o) {
+    const x = o.x, y = o.y;
+    ctx.fillStyle = '#1c1c22'; ctx.fillRect(x, y, o.w, o.h);
+    ctx.strokeStyle = '#444'; ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, o.w - 1, o.h - 1);
+    ctx.fillStyle = '#666';
+    ctx.fillRect(x, y, 4, 4); ctx.fillRect(x + o.w - 4, y, 4, 4);
+    ctx.fillRect(x, y + o.h - 4, 4, 4); ctx.fillRect(x + o.w - 4, y + o.h - 4, 4, 4);
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath(); ctx.arc(x + o.w / 2, y + o.h - 14, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.beginPath(); ctx.arc(x + o.w / 2, y + o.h - 14, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(x + o.w / 2 - 4, y + 6, 8, 5);
+    const pulse = (Math.sin(state.t * 0.2) + 1) / 2;
+    ctx.fillStyle = `rgba(255, 56, 96, ${0.5 + pulse * 0.5})`;
+    ctx.fillRect(x + o.w / 2 - 2, y + o.h - 4, 4, 2);
+  }
+
+  function drawFlame(o) {
+    o.phase += 0.25;
+    const x = o.x + o.w / 2;
+    const baseY = GROUND_Y;
+    ctx.fillStyle = '#444'; ctx.fillRect(x - 5, baseY - 4, 10, 4);
+    ctx.fillStyle = '#222'; ctx.fillRect(x - 6, baseY - 2, 12, 3);
+
+    const flick = Math.sin(o.phase) * 3;
+    for (let i = 0; i < 5; i++) {
+      const fh = o.h - 4 - i * 4 + flick;
+      const fw = o.w - i * 3;
+      ctx.fillStyle = i === 0 ? '#ffeb3b' : i < 2 ? '#ff9800' : i < 4 ? '#ff3818' : '#a01020';
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.ellipse(x + Math.sin(o.phase + i) * 1.5, baseY - 4 - fh / 2 + (5 - i), fw / 2, fh / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    const g = ctx.createRadialGradient(x, baseY - o.h / 2, 2, x, baseY - o.h / 2, 50);
+    g.addColorStop(0, 'rgba(255, 120, 40, 0.3)');
+    g.addColorStop(1, 'rgba(255, 120, 40, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - 50, baseY - 70, 100, 70);
+
+    if (Math.random() < 0.4) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 6, y: baseY - o.h + 2,
+        vx: (Math.random() - 0.5) * 1.5 - state.speed * 0.3,
+        vy: -Math.random() * 2 - 1, life: 30,
+        col: '#ffaa30', r: 1.5,
+      });
+    }
+  }
+
+  function drawCO2(o) {
+    o.phase += 0.4;
+    const x = o.x + o.w / 2;
+    const baseY = GROUND_Y;
+    ctx.fillStyle = '#888'; ctx.fillRect(x - 4, baseY - 6, 8, 6);
+    ctx.fillStyle = '#444'; ctx.fillRect(x - 6, baseY - 2, 12, 3);
+
+    for (let i = 0; i < 8; i++) {
+      const py = baseY - 8 - i * 6;
+      const px = x + Math.sin(o.phase + i * 0.5) * (2 + i * 0.4);
+      const rad = 4 + i * 1.2 + Math.sin(o.phase + i) * 0.8;
+      ctx.fillStyle = `rgba(220, 230, 245, ${0.7 - i * 0.07})`;
+      ctx.beginPath();
+      ctx.arc(px, py, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (Math.random() < 0.3) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 8, y: baseY - o.h,
+        vx: -state.speed * 0.5 + (Math.random() - 0.5),
+        vy: -Math.random() * 0.5 - 0.2, life: 40,
+        col: 'rgba(220,230,245,0.4)', r: 3,
+      });
+    }
+  }
+
+  function drawFlightcase(o) {
+    const x = o.x, y = o.y;
+    // body
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(x, y, o.w, o.h);
+    // top edge highlight
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(x, y, o.w, 2);
+    // metal corner protectors (the iconic flightcase look)
+    ctx.fillStyle = '#999';
+    ctx.fillRect(x, y, 6, 6);
+    ctx.fillRect(x + o.w - 6, y, 6, 6);
+    ctx.fillRect(x, y + o.h - 6, 6, 6);
+    ctx.fillRect(x + o.w - 6, y + o.h - 6, 6, 6);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(x + 1, y + 1, 4, 4);
+    ctx.fillRect(x + o.w - 5, y + 1, 4, 4);
+    ctx.fillRect(x + 1, y + o.h - 5, 4, 4);
+    ctx.fillRect(x + o.w - 5, y + o.h - 5, 4, 4);
+    // latches
+    ctx.fillStyle = '#aaa';
+    const latchY = y + Math.floor(o.h / 2) - 2;
+    ctx.fillRect(x + 3, latchY, 5, 4);
+    ctx.fillRect(x + o.w - 8, latchY, 5, 4);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x + 4, latchY + 1, 3, 2);
+    ctx.fillRect(x + o.w - 7, latchY + 1, 3, 2);
+    // stencil label (only on bigger boxes)
+    if (o.h >= 36) {
+      ctx.fillStyle = 'rgba(220,220,220,0.85)';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('BLEARRED', x + o.w / 2, y + o.h / 2 + 10);
+      ctx.textAlign = 'left';
+    }
+    // wheels on the large case
+    if (o.h >= 50) {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath(); ctx.arc(x + 8, y + o.h, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + o.w - 8, y + o.h, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#444';
+      ctx.beginPath(); ctx.arc(x + 8, y + o.h, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + o.w - 8, y + o.h, 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawMic(o) {
+    o.phase += 0.15;
+    const bobY = Math.sin(o.phase) * 4;
+    const x = o.x, y = o.y + bobY;
+
+    // trailing cable
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < 36; i += 2) {
+      const cx = x + o.w - 2 + i;
+      const cy = y + o.h / 2 + Math.sin(o.phase * 1.5 + i * 0.25) * (6 + i * 0.15);
+      if (i === 0) ctx.moveTo(cx, cy); else ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+
+    // motion lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x - 5, y + 10); ctx.lineTo(x - 14, y + 10);
+    ctx.moveTo(x - 3, y + 18); ctx.lineTo(x - 12, y + 18);
+    ctx.moveTo(x - 5, y + 24); ctx.lineTo(x - 14, y + 24);
+    ctx.stroke();
+
+    // mic shaft
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(x + 4, y + 12, 14, 20);
+    // black band detail
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(x + 4, y + 16, 14, 2);
+    // mic head (round grille)
+    ctx.fillStyle = '#3a3a3a';
+    ctx.beginPath();
+    ctx.arc(x + 11, y + 10, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(x + 11, y + 10, 6, 0, Math.PI * 2);
+    ctx.fill();
+    // grille mesh lines
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 0.5;
+    for (let g = -5; g <= 5; g += 2) {
+      ctx.beginPath();
+      ctx.moveTo(x + 11 + g, y + 5); ctx.lineTo(x + 11 + g, y + 15);
+      ctx.stroke();
+    }
+    // shine
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillRect(x + 7, y + 5, 2, 2);
+    // base plug
+    ctx.fillStyle = '#5a5a5a';
+    ctx.fillRect(x + 7, y + 30, 8, 2);
+  }
+
+  function drawSinger(o) {
+    o.phase += 0.12;
+    const x = o.x, y = o.y;
+    const armWave = Math.sin(o.phase) * 3;
+    const bodyBob = Math.abs(Math.sin(o.phase * 0.5)) * 2;
+    const hairShake = Math.sin(o.phase * 1.3) * 1;
+
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(x + o.w / 2, GROUND_Y + 2, 16, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // legs (skinny jeans)
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(x + 7, y + 44 - bodyBob, 5, 16);
+    ctx.fillRect(x + 16, y + 44 - bodyBob, 5, 16);
+    // boots
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(x + 5, y + 60 - bodyBob, 8, 4);
+    ctx.fillRect(x + 15, y + 60 - bodyBob, 8, 4);
+
+    // body — leather jacket
+    ctx.fillStyle = '#2a0e10';
+    ctx.fillRect(x + 4, y + 22 - bodyBob, 20, 22);
+    // jacket lapels
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(x + 4, y + 22 - bodyBob, 5, 14);
+    ctx.fillRect(x + 19, y + 22 - bodyBob, 5, 14);
+    // white shirt
+    ctx.fillStyle = '#d8d8d8';
+    ctx.fillRect(x + 11, y + 24 - bodyBob, 6, 14);
+    // belt
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(x + 4, y + 40 - bodyBob, 20, 3);
+
+    // raised arm with mic
+    ctx.fillStyle = '#2a0e10';
+    ctx.fillRect(x + 22, y + 14 + armWave - bodyBob, 4, 14);
+    // hand
+    ctx.fillStyle = '#e0b48a';
+    ctx.fillRect(x + 22, y + 26 + armWave - bodyBob, 4, 4);
+    // mic
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(x + 26, y + 18 + armWave - bodyBob, 4, 12);
+    ctx.fillStyle = '#3a3a3a';
+    ctx.beginPath();
+    ctx.arc(x + 28, y + 18 + armWave - bodyBob, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // other arm hanging
+    ctx.fillStyle = '#2a0e10';
+    ctx.fillRect(x + 0, y + 24 - bodyBob, 4, 14);
+    ctx.fillStyle = '#e0b48a';
+    ctx.fillRect(x + 0, y + 36 - bodyBob, 4, 3);
+
+    // head (skin)
+    ctx.fillStyle = '#e0b48a';
+    ctx.fillRect(x + 8, y + 8 - bodyBob, 12, 14);
+    // long hair (dark, shaking)
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(x + 6 + hairShake, y + 4 - bodyBob, 16, 8);
+    ctx.fillRect(x + 5 + hairShake, y + 10 - bodyBob, 4, 14);
+    ctx.fillRect(x + 19 + hairShake, y + 10 - bodyBob, 4, 14);
+    // sunglasses
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(x + 9, y + 13 - bodyBob, 4, 3);
+    ctx.fillRect(x + 15, y + 13 - bodyBob, 4, 3);
+    ctx.fillRect(x + 13, y + 14 - bodyBob, 2, 1);
+    // open mouth (singing)
+    ctx.fillStyle = '#5a1010';
+    ctx.fillRect(x + 12, y + 18 - bodyBob, 4, 3);
+  }
+
+  function drawObstacles() {
+    obstacles.forEach(o => {
+      if (o.type === 'speaker') drawSpeaker(o);
+      else if (o.type === 'flame') drawFlame(o);
+      else if (o.type === 'co2') drawCO2(o);
+      else if (o.type === 'flightcase_s' || o.type === 'flightcase_m' || o.type === 'flightcase_l') drawFlightcase(o);
+      else if (o.type === 'mic') drawMic(o);
+      else if (o.type === 'singer') drawSinger(o);
+    });
+  }
+
+  function drawParticles() {
+    particles.forEach(p => {
+      ctx.fillStyle = p.col;
+      ctx.globalAlpha = Math.min(1, p.life / 30);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHUD() {
+    ctx.fillStyle = '#999';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(Math.floor(state.score)).padStart(5, '0'), W - 10, 50);
+    ctx.fillStyle = '#666';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText('HI ' + String(state.best).padStart(5, '0'), W - 10, 66);
+    ctx.textAlign = 'left';
+
+    if (!state.started && !state.over) {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0, 0, W, H);
+      const pulse = 0.6 + Math.sin(performance.now() / 350) * 0.4;
+      ctx.fillStyle = `rgba(255, 56, 96, ${pulse})`;
+      ctx.font = 'bold 30px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('TOCCA', W / 2, H / 2 - 16);
+      ctx.fillText('PER INIZIARE', W / 2, H / 2 + 22);
+      ctx.fillStyle = '#aaa';
+      ctx.font = '12px monospace';
+      ctx.fillText('Salta gli ostacoli del palco', W / 2, H / 2 + 70);
+      ctx.textAlign = 'left';
+    }
+
+    if (state.over) {
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ff3860';
+      ctx.font = 'bold 22px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('SHOW INTERROTTO', W / 2, H / 2 - 20);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 28px monospace';
+      ctx.fillText(String(Math.floor(state.score)).padStart(5, '0'), W / 2, H / 2 + 12);
+      ctx.fillStyle = '#aaa';
+      ctx.font = '12px monospace';
+      ctx.fillText('Tocca per ricominciare', W / 2, H / 2 + 44);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  function hitbox(o) {
+    if (o.type === 'speaker') return { x: o.x + 2, y: o.y + 4, w: o.w - 4, h: o.h - 6 };
+    if (o.type === 'flame') return { x: o.x + 4, y: o.y + 6, w: o.w - 8, h: o.h - 8 };
+    if (o.type === 'co2') return { x: o.x + 3, y: o.y - 4, w: o.w - 6, h: o.h - 6 };
+    if (o.type === 'flightcase_s' || o.type === 'flightcase_m' || o.type === 'flightcase_l')
+      return { x: o.x + 2, y: o.y + 2, w: o.w - 4, h: o.h - 4 };
+    if (o.type === 'mic') {
+      const bobY = Math.sin(o.phase || 0) * 4;
+      return { x: o.x + 3, y: o.y + 4 + bobY, w: o.w - 6, h: o.h - 8 };
+    }
+    if (o.type === 'singer') return { x: o.x + 4, y: o.y + 6, w: o.w - 8, h: o.h - 10 };
+    return { x: o.x, y: o.y, w: o.w, h: o.h };
+  }
+
+  function roadieBox() {
+    return {
+      x: roadie.x + 3,
+      y: roadie.y - (roadie.h - 2),
+      w: roadie.w - 4,
+      h: roadie.h - 2,
+    };
+  }
+
+  function overlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function update() {
+    if (!state.started || state.over) return;
+    state.t++;
+    state.score += 0.1 * (state.speed / 5);
+
+    if (state.t % 250 === 0 && state.speed < 11) state.speed += 0.4;
+
+    roadie.vy += GRAVITY;
+    roadie.y += roadie.vy;
+    if (roadie.y >= GROUND_Y) { roadie.y = GROUND_Y; roadie.vy = 0; roadie.onGround = true; roadie.jumpsLeft = 2; }
+    if (roadie.onGround) roadie.legPhase += 0.35 * (state.speed / 5);
+
+    nextSpawn--;
+    if (nextSpawn <= 0) {
+      const ob = spawnObstacle();
+      let blockW = ob.w;
+
+      const canPair = ob.type !== 'mic' && ob.type !== 'singer' && ob.type !== 'flightcase_l';
+      const pairChance = state.score < 100 ? 0.12 : state.score < 300 ? 0.20 : 0.28;
+      if (canPair && Math.random() < pairChance) {
+        const type2 = PAIR_TYPES[Math.floor(Math.random() * PAIR_TYPES.length)];
+        const gap = 100 + Math.random() * 40;
+        const ob2 = makeObstacle(type2, ob.x + ob.w + gap);
+        obstacles.push(ob2);
+        blockW = (ob2.x - ob.x) + ob2.w;
+      }
+
+      const extra = blockW > 35 ? Math.floor((blockW - 35) * 0.8) : 0;
+      const base = 70 + Math.random() * 60 + extra;
+      nextSpawn = Math.floor(base * (5 / state.speed));
+    }
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      o.x -= state.speed;
+      if (o.x + o.w < -20) obstacles.splice(i, 1);
+      else if (!o.hit && overlap(roadieBox(), hitbox(o))) {
+        o.hit = true;
+        gameOver();
+      }
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx; p.y += p.vy; p.life--;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function gameOver() {
+    state.over = true;
+    if (state.score > state.best) {
+      state.best = Math.floor(state.score);
+      localStorage.setItem('roadie_best', String(state.best));
+    }
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: roadie.x + 14, y: roadie.y - 20,
+        vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.7) * 6,
+        life: 40 + Math.random() * 20,
+        col: ['#ff3860', '#ffaa30', '#ffe060'][Math.floor(Math.random() * 3)],
+        r: 1 + Math.random() * 2,
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawBackground();
+    drawGround();
+    drawObstacles();
+    drawParticles();
+    drawRoadie();
+    drawHUD();
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+</script>
+</body>
+</html>
