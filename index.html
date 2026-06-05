@@ -58,6 +58,70 @@
     height: auto;
     display: block;
   }
+  #lb-open {
+    margin-top: 2px;
+    background: #1a1a1a;
+    color: #ff3860;
+    border: 1px solid #ff3860;
+    border-radius: 6px;
+    font: bold 12px monospace;
+    letter-spacing: 1px;
+    padding: 6px 14px;
+    cursor: pointer;
+  }
+  #lb {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.82);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+    padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+  }
+  #lb[hidden] { display: none; }
+  .lb-box {
+    background: #12121a;
+    border: 1px solid #ff3860;
+    border-radius: 10px;
+    box-shadow: 0 0 40px rgba(255,56,96,0.25);
+    width: 100%; max-width: 320px;
+    padding: 18px 16px;
+    text-align: center;
+  }
+  .lb-box h2 {
+    margin: 0 0 12px;
+    color: #ff3860;
+    font: bold 18px monospace;
+    letter-spacing: 3px;
+  }
+  #lb-list {
+    list-style: none; margin: 0 0 12px; padding: 0;
+    font: 13px monospace; color: #e8e8e8; text-align: left;
+  }
+  #lb-list li {
+    display: flex; align-items: center;
+    padding: 4px 6px; border-bottom: 1px solid #222;
+  }
+  #lb-list li.me { background: rgba(255,56,96,0.18); border-radius: 4px; }
+  #lb-list li .rank { color: #ffd24a; width: 26px; }
+  #lb-list li .nm { flex: 1; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #lb-list li .sc { color: #aaa; }
+  #lb-msg { color: #888; font: 12px monospace; margin: 8px 0; }
+  #lb-entry { display: flex; gap: 6px; margin-bottom: 10px; }
+  #lb-name {
+    flex: 1; min-width: 0;
+    background: #0a0a0f; color: #e8e8e8;
+    border: 1px solid #333; border-radius: 6px;
+    font: 14px monospace; padding: 8px;
+  }
+  #lb-name:focus { outline: none; border-color: #ff3860; }
+  .lb-btn {
+    background: #ff3860; color: #fff; border: 0; border-radius: 6px;
+    font: bold 13px monospace; padding: 8px 12px; cursor: pointer;
+  }
+  .lb-btn:disabled { opacity: 0.5; }
+  #lb-close {
+    background: transparent; color: #888; border: 0;
+    font: 12px monospace; cursor: pointer; padding: 6px;
+  }
 </style>
 </head>
 <body>
@@ -65,6 +129,20 @@
   <h1>🎤 Roadie Runner 🔧</h1>
   <canvas id="game" width="400" height="700"></canvas>
   <div id="info">Tocca lo schermo per saltare</div>
+  <button id="lb-open">🏆 Classifica</button>
+</div>
+
+<div id="lb" hidden>
+  <div class="lb-box">
+    <h2>CLASSIFICA</h2>
+    <ol id="lb-list"></ol>
+    <div id="lb-msg" hidden></div>
+    <div id="lb-entry" hidden>
+      <input id="lb-name" maxlength="12" placeholder="Il tuo nome" autocomplete="off" spellcheck="false">
+      <button id="lb-save" class="lb-btn">Salva</button>
+    </div>
+    <button id="lb-close">Chiudi</button>
+  </div>
 </div>
 
 <script>
@@ -136,6 +214,7 @@
   }
 
   function handleInput(e) {
+    if (document.body.classList.contains('ui-open')) return;
     if (e && e.cancelable) e.preventDefault();
     jump();
   }
@@ -160,6 +239,7 @@
 
   // keyboard fallback (desktop)
   document.addEventListener('keydown', (e) => {
+    if (document.body.classList.contains('ui-open')) return;
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown') {
       e.preventDefault(); jump();
     }
@@ -1013,6 +1093,7 @@
         r: 1 + Math.random() * 2,
       });
     }
+    document.dispatchEvent(new CustomEvent('roadie:gameover', { detail: { score: Math.floor(state.score) } }));
   }
 
   function draw() {
@@ -1032,6 +1113,137 @@
     requestAnimationFrame(loop);
   }
   loop();
+})();
+</script>
+
+<!-- Classifica globale via Firebase Firestore. La config web NON è segreta. -->
+<script type="module">
+  // Se il CDN dà 404, basta aggiornare il numero di versione qui sotto.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyANZhV6W0zSCs5nNwe7uHpOp8fGdajWwUg",
+    authDomain: "roadie-runner.firebaseapp.com",
+    projectId: "roadie-runner",
+    storageBucket: "roadie-runner.firebasestorage.app",
+    messagingSenderId: "248484299780",
+    appId: "1:248484299780:web:19526213ac492b0bcae151",
+    measurementId: "G-LMLR7P0828"
+  };
+
+  let db = null;
+  try {
+    db = getFirestore(initializeApp(firebaseConfig));
+  } catch (e) {
+    console.warn('Firebase non inizializzato:', e);
+  }
+
+  window.LB = {
+    ready: !!db,
+    async submit(name, score) {
+      if (!db) return false;
+      await addDoc(collection(db, 'scores'), {
+        name: String(name).slice(0, 12),
+        score: Math.floor(score),
+        ts: serverTimestamp(),
+      });
+      return true;
+    },
+    async top(n = 10) {
+      if (!db) return null;
+      const snap = await getDocs(query(collection(db, 'scores'), orderBy('score', 'desc'), limit(n)));
+      return snap.docs.map(d => d.data());
+    },
+  };
+  document.dispatchEvent(new Event('lb:ready'));
+</script>
+
+<script>
+(() => {
+  const lb = document.getElementById('lb');
+  const list = document.getElementById('lb-list');
+  const msg = document.getElementById('lb-msg');
+  const entry = document.getElementById('lb-entry');
+  const nameInput = document.getElementById('lb-name');
+  const saveBtn = document.getElementById('lb-save');
+  const closeBtn = document.getElementById('lb-close');
+  const openBtn = document.getElementById('lb-open');
+
+  function setMsg(t) {
+    if (!t) { msg.hidden = true; msg.textContent = ''; return; }
+    msg.hidden = false; msg.textContent = t;
+  }
+
+  function renderList(rows, meName) {
+    list.innerHTML = '';
+    if (!rows || rows.length === 0) { setMsg('Nessun punteggio ancora. Sii il primo!'); return; }
+    setMsg('');
+    rows.forEach((r, i) => {
+      const li = document.createElement('li');
+      if (meName && r.name === meName) li.className = 'me';
+      const rank = document.createElement('span'); rank.className = 'rank'; rank.textContent = (i + 1) + '.';
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = r.name || '???';
+      const sc = document.createElement('span'); sc.className = 'sc';
+      sc.textContent = String(Math.floor(r.score || 0)).padStart(5, '0');
+      li.append(rank, nm, sc);
+      list.appendChild(li);
+    });
+  }
+
+  function show() { lb.hidden = false; document.body.classList.add('ui-open'); }
+  function hide() { lb.hidden = true; document.body.classList.remove('ui-open'); }
+
+  async function loadList(meName) {
+    list.innerHTML = '';
+    setMsg('Caricamento…');
+    if (!window.LB || !window.LB.ready) { setMsg('Classifica non disponibile (offline).'); return; }
+    try {
+      renderList(await window.LB.top(10), meName);
+    } catch (e) {
+      console.warn(e);
+      setMsg('Classifica non raggiungibile.');
+    }
+  }
+
+  openBtn.addEventListener('click', () => { entry.hidden = true; show(); loadList(null); });
+  closeBtn.addEventListener('click', hide);
+
+  let pendingScore = 0;
+  document.addEventListener('roadie:gameover', (e) => {
+    pendingScore = (e.detail && e.detail.score) || 0;
+    entry.hidden = false;
+    nameInput.value = localStorage.getItem('roadie_name') || '';
+    show();
+    loadList(localStorage.getItem('roadie_name') || null);
+    setTimeout(() => nameInput.focus(), 60);
+  });
+
+  async function saveScore() {
+    const name = (nameInput.value || '').trim().slice(0, 12);
+    if (!name) { nameInput.focus(); return; }
+    localStorage.setItem('roadie_name', name);
+    if (!window.LB || !window.LB.ready) { setMsg('Offline: punteggio non inviato.'); entry.hidden = true; return; }
+    saveBtn.disabled = true; setMsg('Invio…');
+    try {
+      await window.LB.submit(name, pendingScore);
+      entry.hidden = true;
+      await loadList(name);
+    } catch (err) {
+      console.warn(err);
+      setMsg('Invio fallito. Riprova.');
+    } finally {
+      saveBtn.disabled = false;
+    }
+  }
+
+  saveBtn.addEventListener('click', saveScore);
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); saveScore(); }
+    e.stopPropagation();
+  });
 })();
 </script>
 </body>
