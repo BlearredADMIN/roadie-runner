@@ -248,9 +248,9 @@
   function reset() {
     state.over = false; state.speed = 5;
     state.score = 0; state.t = 0;
-    obstacles.length = 0; particles.length = 0;
+    obstacles.length = 0; particles.length = 0; passes.length = 0;
     roadie.y = GROUND_Y; roadie.vy = 0; roadie.onGround = true; roadie.jumpsLeft = 2;
-    nextSpawn = 70;
+    nextSpawn = 70; nextPass = 90;
   }
 
   function drawBackground() {
