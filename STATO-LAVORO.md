@@ -12,10 +12,17 @@
   Spec e piano in `docs/superpowers/`.
 - Inizializzato **git** nel progetto: ogni task committato atomicamente.
 
+- **Rinnovati gli ostacoli** per renderli più riconoscibili:
+  - Rimossi flightcase piccolo e medio; tenuto solo quello grande **BLEARRED**.
+  - Aggiunti: **transenna**, **testa mobile** (faro animato), **batterista**,
+    **trabattello**. Tier ribilanciati (vedi `pickObstacleType` e `CLAUDE.md`).
+
 ### Nota
 - Altezze pass (`GROUND_Y - 130` alto / `GROUND_Y - 40` basso) e cadenza spawn
   (`120 + rnd*120`) in `index.html` (funzione `spawnPass` e blocco pass in
   `update()`): tarabili se il bilanciamento non convince provando.
+- Geometrie/animazioni nuovi ostacoli: funzioni `drawTransenna`,
+  `drawMovingHead`, `drawDrummer`, `drawScaffold`; taglie in `makeObstacle`.
 
 ## Aggiornamento 2026-06-04
 
