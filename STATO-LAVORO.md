@@ -4,7 +4,16 @@
 
 ## Aggiornamento 2026-06-05
 
-### Fatto
+### Fatto — Online + classifica globale
+- **Gioco pubblicato:** https://blearredadmin.github.io/roadie-runner/
+  (GitHub Pages, repo `blearredadmin/roadie-runner`).
+- **Classifica globale** con nickname via **Firebase Firestore** (progetto
+  `roadie-runner`, collezione `scores`): inserimento nome a ogni game over,
+  pannello Top 10, pulsante "🏆 Classifica" in home. Overlay HTML sopra il canvas,
+  con guardia che blocca il salto mentre si scrive. Degradazione elegante se offline.
+- Testato e funzionante sul Mac (via server locale). Da provare sul telefono col link.
+
+### Fatto — meccaniche/grafica (vedi sotto)
 - Aggiunta meccanica **pass backstage collezionabili** (+50 punti a pass,
   bassi da prendere correndo / alti da prendere saltando, **mai letali**),
   laminati brandizzati **BLEARRED** con scintille dorate alla raccolta.

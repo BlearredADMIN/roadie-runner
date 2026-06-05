@@ -42,9 +42,23 @@ volo su iPhone (web app a schermo intero) e da condividere.
 ## Come si prova
 Doppio clic su `index.html` (o trascinalo in Safari/Chrome). Su iPhone:
 "Aggiungi a Home" per giocare a schermo intero.
+Per testare la **classifica** in locale serve un mini server (non `file://`):
+`python3 -m http.server 8765` poi apri `http://localhost:8765/index.html`.
+
+## Online (pubblicato)
+- **URL pubblico:** https://blearredadmin.github.io/roadie-runner/
+- **Hosting:** GitHub Pages, repo `blearredadmin/roadie-runner` (Pages = branch `main`, root).
+- **Classifica globale:** Firebase Firestore, progetto `roadie-runner`, collezione `scores`
+  (`{name, score, ts}`). Regole: lettura pubblica, solo create validato, no update/delete.
+  La config web in `index.html` **non è segreta** (sicurezza data dalle regole).
+- **Aggiornare il gioco online:** ricaricare `index.html` nel repo GitHub (via web:
+  Add file → Upload files, oppure si potrà configurare `gh`/git push più avanti).
+- **Cancellare voci farlocche:** dalla console Firebase → Firestore → collezione `scores`.
 
 ## Regole / convenzioni
-- Tenere il gioco **single-file** (`index.html`): niente dipendenze, niente build.
+- Il gioco resta **un solo file** (`index.html`), niente build. Da quando c'è la
+  classifica ha però una dipendenza CDN (Firebase SDK) e parla con Firestore.
 - Conservare **una sola** versione funzionante in cartella (no duplicati sparsi).
 - Questo progetto vive in `~/Desktop/CLAUDE PROJECTS/Blearred RoadieRunner/`
   secondo la convenzione descritta nel `README.md` della cartella padre.
+- Repo git locale = fonte con storia completa; GitHub = copia pubblicata del solo gioco.
