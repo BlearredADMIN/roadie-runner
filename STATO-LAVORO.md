@@ -2,6 +2,21 @@
 
 > Diario di bordo. Aggiornare a ogni sessione: Fatto / In corso / Prossimi passi.
 
+## Aggiornamento 2026-06-05
+
+### Fatto
+- Aggiunta meccanica **pass backstage collezionabili** (+50 punti a pass,
+  bassi da prendere correndo / alti da prendere saltando, **mai letali**),
+  laminati brandizzati **BLEARRED** con scintille dorate alla raccolta.
+- Implementata con workflow superpowers: brainstorming → spec → piano → esecuzione.
+  Spec e piano in `docs/superpowers/`.
+- Inizializzato **git** nel progetto: ogni task committato atomicamente.
+
+### Nota
+- Altezze pass (`GROUND_Y - 130` alto / `GROUND_Y - 40` basso) e cadenza spawn
+  (`120 + rnd*120`) in `index.html` (funzione `spawnPass` e blocco pass in
+  `update()`): tarabili se il bilanciamento non convince provando.
+
 ## Aggiornamento 2026-06-04
 
 ### Fatto
