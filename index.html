@@ -663,12 +663,154 @@
     ctx.fillRect(x + 12, y + 18 - bodyBob, 4, 3);
   }
 
+  function drawTransenna(o) {
+    const x = o.x, y = o.y, w = o.w, h = o.h;
+    ctx.strokeStyle = '#9aa0a8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y + 3); ctx.lineTo(x + w, y + 3);
+    ctx.moveTo(x, y + h - 4); ctx.lineTo(x + w, y + h - 4);
+    ctx.stroke();
+    ctx.lineWidth = 1.5;
+    for (let i = x + 4; i < x + w - 2; i += 7) {
+      ctx.beginPath();
+      ctx.moveTo(i, y + 3); ctx.lineTo(i, y + h - 4);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#5a5f66';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + h - 4); ctx.lineTo(x - 1, y + h);
+    ctx.moveTo(x + w - 3, y + h - 4); ctx.lineTo(x + w + 1, y + h);
+    ctx.stroke();
+    ctx.fillStyle = '#ff3860';
+    ctx.fillRect(x + w / 2 - 8, y + 6, 16, 6);
+  }
+
+  function drawMovingHead(o) {
+    o.phase += 0.06;
+    const x = o.x, y = o.y, w = o.w, h = o.h;
+    const cx = x + w / 2;
+    const tilt = Math.sin(o.phase) * 0.5;
+    const hue = (state.t * 2 + x * 3) % 360;
+    ctx.fillStyle = '#1c1c24';
+    ctx.fillRect(x + 2, y + h - 8, w - 4, 8);
+    ctx.fillStyle = '#2a2a35';
+    ctx.fillRect(x + 4, y + h - 10, w - 8, 3);
+    ctx.fillStyle = '#15151c';
+    ctx.fillRect(cx - 3, y + 16, 6, h - 26);
+    ctx.fillStyle = '#2a2a35';
+    ctx.fillRect(cx - 9, y + 14, 4, 12);
+    ctx.fillRect(cx + 5, y + 14, 4, 12);
+    ctx.save();
+    ctx.translate(cx, y + 16);
+    ctx.rotate(tilt);
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(-8, -8, 16, 16);
+    ctx.fillStyle = `hsl(${hue}, 90%, 60%)`;
+    ctx.beginPath();
+    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    ctx.fill();
+    const g = ctx.createLinearGradient(0, 0, 0, -60);
+    g.addColorStop(0, `hsla(${hue},90%,60%,0.5)`);
+    g.addColorStop(1, `hsla(${hue},90%,60%,0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-4, -4); ctx.lineTo(-22, -60); ctx.lineTo(22, -60); ctx.lineTo(4, -4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawDrummer(o) {
+    o.phase += 0.3;
+    const x = o.x, y = o.y, w = o.w, h = o.h;
+    const hit = Math.sin(o.phase) * 3;
+    ctx.fillStyle = '#14141c';
+    ctx.beginPath();
+    ctx.arc(x + w / 2, y + h - 12, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ff3860';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#ff3860';
+    ctx.fillRect(x + w / 2 - 5, y + h - 14, 10, 3);
+    ctx.strokeStyle = '#5a5f66';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + w - 8, y + h - 6); ctx.lineTo(x + w - 8, y + 6);
+    ctx.stroke();
+    ctx.fillStyle = '#d4af37';
+    ctx.beginPath();
+    ctx.ellipse(x + w - 8, y + 6 + hit * 0.3, 9, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e0b48a';
+    ctx.fillRect(x + 6, y, 10, 10);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(x + 5, y - 1, 12, 4);
+    ctx.fillStyle = '#222';
+    ctx.fillRect(x + 4, y + 10, 14, 14);
+    ctx.strokeStyle = '#e0b48a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 8, y + 13); ctx.lineTo(x + 2, y + 18 + hit);
+    ctx.moveTo(x + 14, y + 13); ctx.lineTo(x + w - 10, y + 12 - hit);
+    ctx.stroke();
+    ctx.strokeStyle = '#caa472';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 2, y + 18 + hit); ctx.lineTo(x - 3, y + 22 + hit);
+    ctx.moveTo(x + w - 10, y + 12 - hit); ctx.lineTo(x + w - 6, y + 8 - hit);
+    ctx.stroke();
+  }
+
+  function drawScaffold(o) {
+    const x = o.x, y = o.y, w = o.w, h = o.h;
+    ctx.strokeStyle = '#8a9098';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + 4); ctx.lineTo(x + 3, y + h - 4);
+    ctx.moveTo(x + w - 3, y + 4); ctx.lineTo(x + w - 3, y + h - 4);
+    ctx.stroke();
+    ctx.strokeStyle = '#6a7078';
+    ctx.lineWidth = 1.5;
+    const levels = 3;
+    const segH = (h - 14) / levels;
+    for (let i = 0; i < levels; i++) {
+      const yt = y + 4 + i * segH;
+      const yb = yt + segH;
+      ctx.beginPath();
+      ctx.moveTo(x + 3, yt); ctx.lineTo(x + w - 3, yb);
+      ctx.moveTo(x + w - 3, yt); ctx.lineTo(x + 3, yb);
+      ctx.moveTo(x + 3, yt); ctx.lineTo(x + w - 3, yt);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#3a2f22';
+    ctx.fillRect(x - 1, y, w + 2, 5);
+    ctx.fillStyle = '#5a3a1a';
+    ctx.fillRect(x - 1, y, w + 2, 2);
+    ctx.strokeStyle = '#8a9098';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 1, y); ctx.lineTo(x + 1, y - 8);
+    ctx.moveTo(x + w - 1, y); ctx.lineTo(x + w - 1, y - 8);
+    ctx.moveTo(x + 1, y - 8); ctx.lineTo(x + w - 1, y - 8);
+    ctx.stroke();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath(); ctx.arc(x + 3, y + h, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + w - 3, y + h, 3, 0, Math.PI * 2); ctx.fill();
+  }
+
   function drawObstacles() {
     obstacles.forEach(o => {
       if (o.type === 'speaker') drawSpeaker(o);
       else if (o.type === 'flame') drawFlame(o);
       else if (o.type === 'co2') drawCO2(o);
-      else if (o.type === 'flightcase_s' || o.type === 'flightcase_m' || o.type === 'flightcase_l') drawFlightcase(o);
+      else if (o.type === 'flightcase_l') drawFlightcase(o);
+      else if (o.type === 'transenna') drawTransenna(o);
+      else if (o.type === 'testa_mobile') drawMovingHead(o);
+      else if (o.type === 'batterista') drawDrummer(o);
+      else if (o.type === 'trabattello') drawScaffold(o);
       else if (o.type === 'mic') drawMic(o);
       else if (o.type === 'singer') drawSinger(o);
     });
@@ -763,8 +905,12 @@
     if (o.type === 'speaker') return { x: o.x + 2, y: o.y + 4, w: o.w - 4, h: o.h - 6 };
     if (o.type === 'flame') return { x: o.x + 4, y: o.y + 6, w: o.w - 8, h: o.h - 8 };
     if (o.type === 'co2') return { x: o.x + 3, y: o.y - 4, w: o.w - 6, h: o.h - 6 };
-    if (o.type === 'flightcase_s' || o.type === 'flightcase_m' || o.type === 'flightcase_l')
+    if (o.type === 'flightcase_l')
       return { x: o.x + 2, y: o.y + 2, w: o.w - 4, h: o.h - 4 };
+    if (o.type === 'transenna') return { x: o.x + 2, y: o.y + 2, w: o.w - 4, h: o.h - 3 };
+    if (o.type === 'testa_mobile') return { x: o.x + 5, y: o.y + 4, w: o.w - 10, h: o.h - 6 };
+    if (o.type === 'batterista') return { x: o.x + 3, y: o.y + 4, w: o.w - 8, h: o.h - 6 };
+    if (o.type === 'trabattello') return { x: o.x + 3, y: o.y + 1, w: o.w - 6, h: o.h - 3 };
     if (o.type === 'mic') {
       const bobY = Math.sin(o.phase || 0) * 4;
       return { x: o.x + 3, y: o.y + 4 + bobY, w: o.w - 6, h: o.h - 8 };
