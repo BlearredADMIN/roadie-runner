@@ -16,6 +16,9 @@
   - Rimossi flightcase piccolo e medio; tenuto solo quello grande **BLEARRED**.
   - Aggiunti: **transenna**, **testa mobile** (faro animato), **batterista**,
     **trabattello**. Tier ribilanciati (vedi `pickObstacleType` e `CLAUDE.md`).
+  - **Microfono volante rimosso**, sostituito dalla **strobo** (`strobo`,
+    `drawStrobo`): ostacolo aereo lampeggiante, stesso ruolo "da non saltare".
+  - **Teste mobili rese più frequenti** in tutti i tier (preferenza di Ivan).
 
 ### Nota
 - Altezze pass (`GROUND_Y - 130` alto / `GROUND_Y - 40` basso) e cadenza spawn

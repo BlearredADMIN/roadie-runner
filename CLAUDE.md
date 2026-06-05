@@ -25,11 +25,14 @@ volo su iPhone (web app a schermo intero) e da condividere.
   `localStorage` (chiave `roadie_best`).
 - **Difficoltà progressiva**: la velocità aumenta ogni ~250 frame fino a 11.
 - **Ostacoli a tier** (sbloccati al crescere del punteggio):
-  - Tier 1 (<100): cassa (speaker), getto CO₂, microfono volante, testa mobile, transenna
+  - Tier 1 (<100): cassa (speaker), getto CO₂, strobo, testa mobile, transenna
   - Tier 2 (<250): + flightcase grande (BLEARRED), fiamma, batterista
   - Tier 3 (<450): + trabattello
   - Tier 4 (≥450): + il cantante
   - Unico flightcase rimasto: quello grande brandizzato (`flightcase_l`).
+  - **Teste mobili** = ostacolo più frequente (scelta di design).
+  - **Strobo** (`strobo`): unico ostacolo aereo "da NON saltare" (ci passi sotto
+    correndo), ha sostituito il microfono volante.
 - **Pass collezionabili**: laminati BLEARRED (bassi/alti) che danno +50 punti,
   mai letali (vedi `spawnPass` / `drawPasses`).
 - Ostacoli **a coppia** con gap calibrato per richiedere il doppio salto.
