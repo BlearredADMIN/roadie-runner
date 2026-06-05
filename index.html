@@ -787,6 +787,32 @@
       }
     }
 
+    // --- Pass collezionabili (bonus, non causano MAI game over) ---
+    nextPass--;
+    if (nextPass <= 0) {
+      spawnPass();
+      nextPass = Math.floor((120 + Math.random() * 120) * (5 / state.speed));
+    }
+    for (let i = passes.length - 1; i >= 0; i--) {
+      const p = passes[i];
+      p.x -= state.speed;
+      if (p.x + p.w < -20) { passes.splice(i, 1); continue; }
+      if (!p.taken && overlap(roadieBox(), p)) {
+        p.taken = true;
+        state.score += 50;
+        for (let k = 0; k < 8; k++) {
+          particles.push({
+            x: p.x + p.w / 2, y: p.y + p.h / 2,
+            vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.7) * 4,
+            life: 25 + Math.random() * 15,
+            col: ['#ffd24a', '#ffe9a0', '#fff3c4'][Math.floor(Math.random() * 3)],
+            r: 1 + Math.random() * 2,
+          });
+        }
+        passes.splice(i, 1);
+      }
+    }
+
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.x += p.vx; p.y += p.vy; p.life--;
