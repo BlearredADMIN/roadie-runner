@@ -646,26 +646,38 @@
 
   function drawTransenna(o) {
     const x = o.x, y = o.y, w = o.w, h = o.h;
+    const top = y + 3, bot = y + h - 4;
+    const ph = bot - top;
+    // pannello a strisce diagonali rosse/bianche (clip al rettangolo)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, top, w, ph);
+    ctx.clip();
+    ctx.fillStyle = '#ececec';
+    ctx.fillRect(x, top, w, ph);
+    ctx.fillStyle = '#ff3860';
+    const sw = 8; // larghezza striscia
+    for (let i = -ph; i < w + ph; i += sw * 2) {
+      ctx.beginPath();
+      ctx.moveTo(x + i, top);
+      ctx.lineTo(x + i + sw, top);
+      ctx.lineTo(x + i + sw - ph, bot);
+      ctx.lineTo(x + i - ph, bot);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    // telaio metallico attorno al pannello
     ctx.strokeStyle = '#9aa0a8';
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x, y + 3); ctx.lineTo(x + w, y + 3);
-    ctx.moveTo(x, y + h - 4); ctx.lineTo(x + w, y + h - 4);
-    ctx.stroke();
-    ctx.lineWidth = 1.5;
-    for (let i = x + 4; i < x + w - 2; i += 7) {
-      ctx.beginPath();
-      ctx.moveTo(i, y + 3); ctx.lineTo(i, y + h - 4);
-      ctx.stroke();
-    }
+    ctx.strokeRect(x, top, w, ph);
+    // piedini d'appoggio
     ctx.strokeStyle = '#5a5f66';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(x + 3, y + h - 4); ctx.lineTo(x - 1, y + h);
-    ctx.moveTo(x + w - 3, y + h - 4); ctx.lineTo(x + w + 1, y + h);
+    ctx.moveTo(x + 3, bot); ctx.lineTo(x - 1, y + h);
+    ctx.moveTo(x + w - 3, bot); ctx.lineTo(x + w + 1, y + h);
     ctx.stroke();
-    ctx.fillStyle = '#ff3860';
-    ctx.fillRect(x + w / 2 - 8, y + 6, 16, 6);
   }
 
   function drawMovingHead(o) {
