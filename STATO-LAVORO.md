@@ -2,6 +2,32 @@
 
 > Diario di bordo. Aggiornare a ogni sessione: Fatto / In corso / Prossimi passi.
 
+## ▶︎ RIPRESA (leggere qui per primo)
+
+**Dove siamo:** gioco completo e **pubblicato online** con classifica globale.
+Repo git locale pulito, tutto committato. Workflow usato: superpowers
+(brainstorming → spec → plan → execute); spec e piani in `docs/superpowers/`.
+
+- **Link pubblico:** https://blearredadmin.github.io/roadie-runner/
+- **Hosting:** GitHub Pages, repo `blearredadmin/roadie-runner` (branch `main`, root).
+- **Classifica:** Firebase Firestore, progetto `roadie-runner`, collezione `scores`.
+
+**In sospeso (da fare):**
+- ⏳ **Test classifica dal telefono** (cross-dispositivo): aprire il link su iPhone,
+  salvare un punteggio, verificare che compaia anche sul Mac.
+
+**Possibili prossimi passi (non confermati):**
+- Configurare `gh`/git push per aggiornare il gioco online con un comando
+  (ora si ricarica `index.html` a mano via web su GitHub).
+- Audio (salto / game over / musica). Icona app brandizzata.
+- Dominio Blearred (es. `game.blearred.com`) al posto del sottodominio github.io.
+- Tarature fini: altezze pass, frequenza ostacoli, ritmo strobo.
+
+**Per riprendere:** `cd` nella cartella del progetto e `claude --continue`
+(o `claude --resume`).
+
+---
+
 ## Aggiornamento 2026-06-05
 
 ### Fatto — Online + classifica globale
