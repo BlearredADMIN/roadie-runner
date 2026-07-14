@@ -15,6 +15,11 @@ Repo git locale pulito, tutto committato. Workflow usato: superpowers
 **In sospeso (da fare):**
 - ⏳ **Test classifica dal telefono** (cross-dispositivo): aprire il link su iPhone,
   salvare un punteggio, verificare che compaia anche sul Mac.
+- ⏳ **Pubblicare online la nuova classifica**: `index.html` aggiornato in locale ma
+  NON ancora ricaricato nel repo `blearredadmin/roadie-runner` (il live è indietro).
+- ⏳ **(Opzionale) Regole Firestore**: oggi sono create-only → la dedup per nome è
+  lato client e i vecchi documenti restano nel DB (invisibili ma si accumulano).
+  Per pulizia vera servirebbe consentire update sullo stesso nome (azione console).
 
 **Possibili prossimi passi (non confermati):**
 - Configurare `gh`/git push per aggiornare il gioco online con un comando
@@ -22,6 +27,28 @@ Repo git locale pulito, tutto committato. Workflow usato: superpowers
 - Audio (salto / game over / musica). Icona app brandizzata.
 - Dominio Blearred (es. `game.blearred.com`) al posto del sottodominio github.io.
 - Tarature fini: altezze pass, frequenza ostacoli, ritmo strobo.
+
+---
+
+## Aggiornamento 2026-07-14
+
+### Fatto — Classifica High Score ridisegnata (Top 10, un nome per giocatore)
+- **Fine partita ridisegnata**: punteggio finale grande e centrale
+  ("Il tuo punteggio"), Top 10 accanto (affiancata ≥620px, sotto su mobile),
+  pulsante **"🔁 Rigioca"** (evento `roadie:restart` → `reset()` nel gioco).
+- **Logica classifica**:
+  - Fuori Top 10 → nessun campo nome, solo classifica + riga "TU" evidenziata.
+  - Dentro Top 10 con nuovo record → titolo **"🎉 Nuovo High Score!"**;
+    la **prima volta** chiede il nome, poi salva in automatico col nome memorizzato.
+  - Già in classifica ma senza migliorare → "Il tuo record resta XXX", niente campo.
+  - Dopo il salvataggio la Top 10 si aggiorna con **animazione flash** sul record.
+- **Un solo record per nome**: `window.LB.top()` legge fino a 100 doc e deduplica
+  lato client (max score per nome, case-insensitive); al salvataggio non si
+  sovrascrive un punteggio già ≥. Ordinamento sempre desc.
+- **Vincolo noto**: regole Firestore create-only → dedup/aggiornamento solo lato
+  client; i doc vecchi restano nel DB (nascosti). Vedi "In sospeso".
+- Testato in locale (server `python3 -m http.server 8765`) e approvato da Ivan.
+  Modalità di lavoro: Superpowers **lite** (diretto, senza spec/piani formali).
 
 **Per riprendere:** `cd` nella cartella del progetto e `claude --continue`
 (o `claude --resume`).

@@ -82,7 +82,7 @@
     border: 1px solid #ff3860;
     border-radius: 10px;
     box-shadow: 0 0 40px rgba(255,56,96,0.25);
-    width: 100%; max-width: 320px;
+    width: 100%; max-width: 340px;
     padding: 18px 16px;
     text-align: center;
   }
@@ -92,6 +92,25 @@
     font: bold 18px monospace;
     letter-spacing: 3px;
   }
+  /* Punteggio finale, molto grande e centrale */
+  #lb-score { margin-bottom: 10px; }
+  #lb-score[hidden] { display: none; }
+  #lb-score .lbl {
+    display: block; color: #9aa; font: 11px monospace;
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px;
+  }
+  #lb-score b {
+    display: block; color: #ffe060; font: bold 46px monospace;
+    line-height: 1; text-shadow: 0 0 18px rgba(255,224,96,0.4);
+  }
+  /* Messaggio "Nuovo High Score!" */
+  #lb-title {
+    color: #ff3860; font: bold 15px monospace; letter-spacing: 1px;
+    margin-bottom: 12px; animation: pop 0.4s ease;
+  }
+  #lb-title[hidden] { display: none; }
+  @keyframes pop { 0% { transform: scale(0.7); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  .lb-side { margin-bottom: 4px; }
   #lb-list {
     list-style: none; margin: 0 0 12px; padding: 0;
     font: 13px monospace; color: #e8e8e8; text-align: left;
@@ -101,6 +120,12 @@
     padding: 4px 6px; border-bottom: 1px solid #222;
   }
   #lb-list li.me { background: rgba(255,56,96,0.18); border-radius: 4px; }
+  #lb-list li.flash { animation: flashRow 1.4s ease; }
+  @keyframes flashRow {
+    0%, 100% { background: rgba(255,56,96,0.18); }
+    25% { background: rgba(255,224,96,0.85); }
+    60% { background: rgba(255,224,96,0.35); }
+  }
   #lb-list li .rank { color: #ffd24a; width: 26px; }
   #lb-list li .nm { flex: 1; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #lb-list li .sc { color: #aaa; }
@@ -118,9 +143,18 @@
     font: bold 13px monospace; padding: 8px 12px; cursor: pointer;
   }
   .lb-btn:disabled { opacity: 0.5; }
+  .lb-actions { display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 6px; }
+  #lb-replay[hidden] { display: none; }
   #lb-close {
     background: transparent; color: #888; border: 0;
     font: 12px monospace; cursor: pointer; padding: 6px;
+  }
+  /* Su schermi larghi: punteggio a sinistra, Top 10 a destra */
+  @media (min-width: 620px) {
+    .lb-box { max-width: 560px; }
+    #lb-grid { display: flex; gap: 22px; align-items: center; text-align: left; }
+    #lb-grid > .lb-left { flex: 0 0 190px; }
+    #lb-grid > .lb-side { flex: 1; margin-bottom: 0; }
   }
 </style>
 </head>
@@ -134,14 +168,28 @@
 
 <div id="lb" hidden>
   <div class="lb-box">
-    <h2>CLASSIFICA</h2>
-    <ol id="lb-list"></ol>
-    <div id="lb-msg" hidden></div>
+    <div id="lb-grid">
+      <div class="lb-left">
+        <div id="lb-score" hidden>
+          <span class="lbl">Il tuo punteggio</span>
+          <b id="lb-score-val">0</b>
+        </div>
+        <div id="lb-title" hidden></div>
+      </div>
+      <div class="lb-side">
+        <h2>TOP 10</h2>
+        <ol id="lb-list"></ol>
+        <div id="lb-msg" hidden></div>
+      </div>
+    </div>
     <div id="lb-entry" hidden>
       <input id="lb-name" maxlength="12" placeholder="Il tuo nome" autocomplete="off" spellcheck="false">
       <button id="lb-save" class="lb-btn">Salva</button>
     </div>
-    <button id="lb-close">Chiudi</button>
+    <div class="lb-actions">
+      <button id="lb-replay" class="lb-btn" hidden>🔁 Rigioca</button>
+      <button id="lb-close">Chiudi</button>
+    </div>
   </div>
 </div>
 
@@ -245,6 +293,9 @@
     }
     if (e.code === 'KeyR') reset();
   });
+
+  // Il pulsante "Rigioca" della classifica fa ripartire subito la partita.
+  document.addEventListener('roadie:restart', () => { reset(); state.started = true; });
 
   // block iOS pinch-zoom only (do NOT block touchmove globally — it kills taps)
   document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -1154,8 +1205,20 @@
     },
     async top(n = 10) {
       if (!db) return null;
-      const snap = await getDocs(query(collection(db, 'scores'), orderBy('score', 'desc'), limit(n)));
-      return snap.docs.map(d => d.data());
+      // Le regole Firestore sono create-only (no update/delete): possono esistere
+      // più documenti con lo stesso nome. Leggiamo un po' di documenti in più e
+      // deduplichiamo lato client, tenendo per ogni nome solo il punteggio più alto.
+      const snap = await getDocs(query(collection(db, 'scores'), orderBy('score', 'desc'), limit(100)));
+      const bestByName = new Map();
+      snap.docs.forEach(d => {
+        const r = d.data();
+        const key = String(r.name || '???').trim().toLowerCase();
+        const prev = bestByName.get(key);
+        if (!prev || Math.floor(r.score || 0) > Math.floor(prev.score || 0)) bestByName.set(key, r);
+      });
+      return [...bestByName.values()]
+        .sort((a, b) => Math.floor(b.score || 0) - Math.floor(a.score || 0))
+        .slice(0, n);
     },
   };
   document.dispatchEvent(new Event('lb:ready'));
@@ -1171,72 +1234,190 @@
   const saveBtn = document.getElementById('lb-save');
   const closeBtn = document.getElementById('lb-close');
   const openBtn = document.getElementById('lb-open');
+  const scoreBox = document.getElementById('lb-score');
+  const scoreVal = document.getElementById('lb-score-val');
+  const titleEl = document.getElementById('lb-title');
+  const replayBtn = document.getElementById('lb-replay');
+
+  const TOP_N = 10;
+  const pad = (n) => String(Math.floor(n || 0)).padStart(5, '0');
+  const norm = (s) => String(s || '').trim().toLowerCase();
 
   function setMsg(t) {
     if (!t) { msg.hidden = true; msg.textContent = ''; return; }
     msg.hidden = false; msg.textContent = t;
   }
+  function setTitle(t) {
+    if (!t) { titleEl.hidden = true; titleEl.textContent = ''; return; }
+    titleEl.hidden = false; titleEl.textContent = t;
+  }
 
-  function renderList(rows, meName) {
+  // Punteggio già registrato per un dato nome (dedup case-insensitive), o -1.
+  function existingScore(rows, name) {
+    if (!rows || !name) return -1;
+    const key = norm(name);
+    const r = rows.find(x => norm(x.name) === key);
+    return r ? Math.floor(r.score || 0) : -1;
+  }
+
+  // rows: Top N (già dedotta per nome). myScore != null → riga "TU" in fondo.
+  // flashName: evidenzia con animazione la riga di quel nome (nuovo record).
+  function renderList(rows, meName, myScore, flashName) {
     list.innerHTML = '';
-    if (!rows || rows.length === 0) { setMsg('Nessun punteggio ancora. Sii il primo!'); return; }
-    setMsg('');
-    rows.forEach((r, i) => {
+    const hasRows = rows && rows.length > 0;
+    if (!hasRows && myScore == null) { setMsg('Nessun punteggio ancora. Sii il primo!'); return; }
+    if (hasRows) {
+      setMsg('');
+      rows.forEach((r, i) => {
+        const li = document.createElement('li');
+        const isMe = meName && norm(r.name) === norm(meName);
+        if (isMe) li.className = 'me';
+        if (flashName && norm(r.name) === norm(flashName)) li.className = (isMe ? 'me ' : '') + 'flash';
+        const rank = document.createElement('span'); rank.className = 'rank'; rank.textContent = (i + 1) + '.';
+        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = r.name || '???';
+        const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = pad(r.score);
+        li.append(rank, nm, sc);
+        list.appendChild(li);
+      });
+    }
+    if (myScore != null) {
       const li = document.createElement('li');
-      if (meName && r.name === meName) li.className = 'me';
-      const rank = document.createElement('span'); rank.className = 'rank'; rank.textContent = (i + 1) + '.';
-      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = r.name || '???';
-      const sc = document.createElement('span'); sc.className = 'sc';
-      sc.textContent = String(Math.floor(r.score || 0)).padStart(5, '0');
+      li.className = 'me';
+      const rank = document.createElement('span'); rank.className = 'rank'; rank.textContent = '•';
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = 'TU';
+      const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = pad(myScore);
       li.append(rank, nm, sc);
       list.appendChild(li);
-    });
+    }
+  }
+
+  // true se il punteggio entra nella Top N (meno di N voci, o batte l'ultima).
+  function qualifies(rows, score) {
+    if (!rows || rows.length < TOP_N) return true;
+    return Math.floor(score) > Math.floor(rows[rows.length - 1].score || 0);
   }
 
   function show() { lb.hidden = false; document.body.classList.add('ui-open'); }
   function hide() { lb.hidden = true; document.body.classList.remove('ui-open'); }
 
-  async function loadList(meName) {
-    list.innerHTML = '';
+  // Legge e disegna la Top N. Ritorna le righe (o null se non disponibile).
+  async function loadList(highlightName, flashName) {
     setMsg('Caricamento…');
-    if (!window.LB || !window.LB.ready) { setMsg('Classifica non disponibile (offline).'); return; }
+    if (!window.LB || !window.LB.ready) { list.innerHTML = ''; setMsg('Classifica non disponibile (offline).'); return null; }
     try {
-      renderList(await window.LB.top(10), meName);
+      const rows = await window.LB.top(TOP_N);
+      renderList(rows, highlightName, null, flashName);
+      return rows;
     } catch (e) {
-      console.warn(e);
-      setMsg('Classifica non raggiungibile.');
+      console.warn(e); list.innerHTML = ''; setMsg('Classifica non raggiungibile.');
+      return null;
     }
   }
 
-  openBtn.addEventListener('click', () => { entry.hidden = true; show(); loadList(null); });
+  // Apertura dalla home: sola consultazione, niente punteggio/nome/rigioca.
+  openBtn.addEventListener('click', () => {
+    scoreBox.hidden = true; setTitle(''); entry.hidden = true; replayBtn.hidden = true;
+    show(); loadList(null);
+  });
   closeBtn.addEventListener('click', hide);
+  replayBtn.addEventListener('click', () => { hide(); document.dispatchEvent(new Event('roadie:restart')); });
+
+  // Invia il punteggio e ricarica la Top N evidenziando/animando il nuovo record.
+  async function submitAndRefresh(name, score) {
+    if (!window.LB || !window.LB.ready) { setMsg('Offline: punteggio non inviato.'); return false; }
+    try {
+      await window.LB.submit(name, score);
+      await loadList(name, name);   // flash sulla riga appena inserita
+      return true;
+    } catch (err) {
+      console.warn(err); setMsg('Invio fallito. Riprova.'); return false;
+    }
+  }
 
   let pendingScore = 0;
-  document.addEventListener('roadie:gameover', (e) => {
+  let lastRows = null;
+
+  document.addEventListener('roadie:gameover', async (e) => {
     pendingScore = (e.detail && e.detail.score) || 0;
-    entry.hidden = false;
-    nameInput.value = localStorage.getItem('roadie_name') || '';
+    const meName = localStorage.getItem('roadie_name') || null;
+
+    // UI base del game over: punteggio grande + pulsante Rigioca.
+    scoreVal.textContent = pad(pendingScore);
+    scoreBox.hidden = false;
+    replayBtn.hidden = false;
+    entry.hidden = true;
+    setTitle('');
     show();
-    loadList(localStorage.getItem('roadie_name') || null);
-    setTimeout(() => nameInput.focus(), 60);
+    setMsg('Caricamento…');
+
+    const offline = !(window.LB && window.LB.ready);
+    let rows = null, loadErr = false;
+    if (!offline) {
+      try { rows = await window.LB.top(TOP_N); }
+      catch (err) { console.warn(err); loadErr = true; }
+    }
+    lastRows = rows;
+
+    if (offline) {
+      renderList(null, meName, pendingScore);
+      setMsg('Classifica offline: punteggio non salvato.');
+      return;
+    }
+    if (loadErr) {
+      if (meName) {
+        renderList(null, meName, pendingScore);
+        setMsg('Classifica non raggiungibile — riprova più tardi.');
+      } else {
+        renderList(null, meName, pendingScore);
+        entry.hidden = false; nameInput.value = '';
+        setMsg('Classifica non raggiungibile — inserisci il nome per riprovare.');
+        setTimeout(() => nameInput.focus(), 60);
+      }
+      return;
+    }
+
+    const prev = existingScore(rows, meName);          // record precedente del giocatore
+    const beatsSelf = Math.floor(pendingScore) > prev; // ha migliorato il proprio record?
+
+    if (qualifies(rows, pendingScore) && beatsSelf) {
+      if (meName) {
+        // Nome già noto: salvataggio automatico (nessun modulo), poi anima il record.
+        renderList(rows, meName);
+        setTitle('🎉 Nuovo High Score!');
+        setMsg('Salvataggio…');
+        if (await submitAndRefresh(meName, pendingScore)) setMsg('Salvato come ' + meName + '.');
+      } else {
+        // Primo record in assoluto: chiedi il nome (una sola volta).
+        renderList(rows, meName);
+        setTitle('🎉 Nuovo High Score!');
+        entry.hidden = false; nameInput.value = '';
+        setMsg('Inserisci il tuo nome per salvarlo.');
+        setTimeout(() => nameInput.focus(), 60);
+      }
+    } else if (!beatsSelf && prev >= 0) {
+      // In classifica ma non hai battuto il tuo record: nessun modulo.
+      renderList(rows, meName);
+      setMsg('Il tuo record resta ' + pad(prev) + '. Riprova!');
+    } else {
+      // Fuori dalla Top 10: classifica + tuo punteggio evidenziato, niente modulo.
+      renderList(rows, meName, pendingScore);
+      setMsg('Fuori dalla Top ' + TOP_N + ' — riprova!');
+    }
   });
 
   async function saveScore() {
     const name = (nameInput.value || '').trim().slice(0, 12);
     if (!name) { nameInput.focus(); return; }
-    localStorage.setItem('roadie_name', name);
-    if (!window.LB || !window.LB.ready) { setMsg('Offline: punteggio non inviato.'); entry.hidden = true; return; }
-    saveBtn.disabled = true; setMsg('Invio…');
-    try {
-      await window.LB.submit(name, pendingScore);
-      entry.hidden = true;
-      await loadList(name);
-    } catch (err) {
-      console.warn(err);
-      setMsg('Invio fallito. Riprova.');
-    } finally {
-      saveBtn.disabled = false;
+    // Un nome può comparire una sola volta: non sovrascrivere un record già più alto.
+    if (existingScore(lastRows, name) >= Math.floor(pendingScore)) {
+      setMsg('"' + name + '" ha già un punteggio più alto in classifica.');
+      return;
     }
+    localStorage.setItem('roadie_name', name);   // memorizzato: non verrà più richiesto
+    saveBtn.disabled = true; setMsg('Invio…');
+    const ok = await submitAndRefresh(name, pendingScore);
+    saveBtn.disabled = false;
+    if (ok) { entry.hidden = true; setMsg('Salvato come ' + name + '.'); }
   }
 
   saveBtn.addEventListener('click', saveScore);
