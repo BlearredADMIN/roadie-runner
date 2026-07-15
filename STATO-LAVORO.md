@@ -12,21 +12,46 @@ Repo git locale pulito, tutto committato. Workflow usato: superpowers
 - **Hosting:** GitHub Pages, repo `blearredadmin/roadie-runner` (branch `main`, root).
 - **Classifica:** Firebase Firestore, progetto `roadie-runner`, collezione `scores`.
 
+**Deploy:** `./publish.sh` pubblica con un comando (copia i soli file pubblici in
+`.deploy/` — clone del repo pubblico, ignorato da git — e fa push). Auth via token
+GitHub salvato nel Portachiavi macOS. Repo pubblico: `BlearredADMIN/roadie-runner`.
+
 **In sospeso (da fare):**
 - ⏳ **Test classifica dal telefono** (cross-dispositivo): aprire il link su iPhone,
-  salvare un punteggio, verificare che compaia anche sul Mac.
-- ⏳ **Pubblicare online la nuova classifica**: `index.html` aggiornato in locale ma
-  NON ancora ricaricato nel repo `blearredadmin/roadie-runner` (il live è indietro).
+  salvare un punteggio, verificare che compaia anche sul Mac. (Ora il live è aggiornato.)
+- ⏳ **Prova "Aggiungi a Home" su iPhone**: verificare icona Blearred + schermo intero.
 - ⏳ **(Opzionale) Regole Firestore**: oggi sono create-only → la dedup per nome è
   lato client e i vecchi documenti restano nel DB (invisibili ma si accumulano).
   Per pulizia vera servirebbe consentire update sullo stesso nome (azione console).
 
 **Possibili prossimi passi (non confermati):**
-- Configurare `gh`/git push per aggiornare il gioco online con un comando
-  (ora si ricarica `index.html` a mano via web su GitHub).
-- Audio (salto / game over / musica). Icona app brandizzata.
+- Audio (salto / game over / musica).
 - Dominio Blearred (es. `game.blearred.com`) al posto del sottodominio github.io.
 - Tarature fini: altezze pass, frequenza ostacoli, ritmo strobo.
+
+---
+
+## Aggiornamento 2026-07-15
+
+### Fatto — Condivisibile agli eventi: QR + PWA leggera + deploy con un comando
+Obiettivo: dare il gioco al volo a clienti/colleghi agli eventi. Deciso di **non**
+andare sull'App Store (attrito alto, solo iPhone, 99€/anno, rischio rifiuto, Xcode
+non ci sta sul disco) → QR verso la web app già online. Spec e piano in
+`docs/superpowers/` (workflow superpowers lite: brainstorming → spec → plan → execute).
+
+- **Icona app Blearred** su misura: `assets/icon.svg` (doppio chevron oro+magenta su
+  nero, stile scelto tra 10 varianti), esportata in PNG 180/192/512 con
+  `qlmanage`+`sips`.
+- **PWA leggera** (niente offline/service worker, su richiesta): `manifest.json`
+  (standalone, portrait, colori brand) + meta `apple-touch-icon`,
+  `apple-mobile-web-app-title`, `theme-color` in `index.html`. "Aggiungi a Home"
+  dà icona Blearred + schermo intero.
+- **QR code** (`assets/qr.png`/`.svg`, via `segno`) verso il link pubblico +
+  **cartolina A6 stampabile** (`assets/cartolina.html`) per stand/biglietti.
+- **Deploy con un comando** (`publish.sh`): pubblica su GitHub Pages copiando i soli
+  file pubblici; docs/note interne restano private. Auth token in Portachiavi.
+- **Pubblicato online**: live verificato (manifest + icona + classifica Top 10 ora
+  aggiornati). Con questo deploy è andata online anche la classifica Top 10 del 14/07.
 
 ---
 
