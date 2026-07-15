@@ -1403,9 +1403,9 @@
       renderList(rows, meName);
       setMsg('Il tuo record resta ' + pad(prev) + '. Riprova!');
     } else {
-      // Fuori dalla Top 10: classifica + tuo punteggio evidenziato, niente modulo.
-      renderList(rows, meName, pendingScore);
-      setMsg('Fuori dalla Top ' + TOP_N + ' — riprova!');
+      // Fuori dalla Top 10: mostra la Top 10 (senza riga "TU"), niente modulo nome.
+      renderList(rows, meName);
+      setMsg('Mi spiace, non sei in classifica. Ritenta!');
     }
   });
 
