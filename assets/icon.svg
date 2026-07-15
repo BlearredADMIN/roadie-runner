@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0a0a0f"/>
+  <!-- doppio chevron velocità: oro + magenta (brand Blearred) -->
+  <g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="140,130 300,256 140,382" stroke="#ffcf3f"/>
+    <polyline points="255,130 415,256 255,382" stroke="#ff3860"/>
+  </g>
+</svg>
