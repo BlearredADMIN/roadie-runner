@@ -53,6 +53,17 @@ non ci sta sul disco) → QR verso la web app già online. Spec e piano in
 - **Pubblicato online**: live verificato (manifest + icona + classifica Top 10 ora
   aggiornati). Con questo deploy è andata online anche la classifica Top 10 del 14/07.
 
+### Fatto — Rifiniture classifica (fuori Top 10 + bug campo nome)
+- **Fuori dalla Top 10**: ora mostra la Top 10 (senza la riga "TU") + messaggio
+  **"Mi spiace, non sei in classifica. Ritenta!"** (prima: "Fuori dalla Top 10").
+  Vedi ramo `else` in `document.addEventListener('roadie:gameover', …)`.
+- **Bug CSS risolto**: `#lb-entry` aveva `display:flex` senza guardia `[hidden]`,
+  quindi il campo nome NON si nascondeva mai (appariva in ogni fine partita).
+  Aggiunta `#lb-entry[hidden] { display: none; }` (come già per `#lb-title` /
+  `#lb-replay`). Ora il campo nome compare **solo** per un nuovo high score.
+- Fix dell'URL deploy: `.deploy` e `publish.sh` usano `BlearredADMIN/roadie-runner`
+  (niente più avviso "repository moved"). Tutto pubblicato e verificato live.
+
 ---
 
 ## Aggiornamento 2026-07-14
