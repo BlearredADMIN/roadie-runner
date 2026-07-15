@@ -4,7 +4,7 @@
 # interne (docs/, spec, STATO-LAVORO) restano private.
 set -e
 cd "$(dirname "$0")"
-REPO_URL="https://github.com/blearredadmin/roadie-runner.git"
+REPO_URL="https://github.com/BlearredADMIN/roadie-runner.git"
 DEPLOY=".deploy"
 
 # Clone del repo pubblico al primo uso (clone pubblico: non serve auth)
