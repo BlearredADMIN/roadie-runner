@@ -59,6 +59,7 @@ Per testare la **classifica** in locale serve un mini server (non `file://`):
 - Il gioco resta **un solo file** (`index.html`), niente build. Da quando c'è la
   classifica ha però una dipendenza CDN (Firebase SDK) e parla con Firestore.
 - Conservare **una sola** versione funzionante in cartella (no duplicati sparsi).
-- Questo progetto vive in `~/Desktop/CLAUDE PROJECTS/Blearred RoadieRunner/`
+- Questo progetto vive in `~/CLAUDE PROJECTS/roadie-runner/` (spostato dalla
+  Scrivania il 19/07/2026: era sincronizzata su iCloud, che sfrattava i file `.git`)
   secondo la convenzione descritta nel `README.md` della cartella padre.
 - Repo git locale = fonte con storia completa; GitHub = copia pubblicata del solo gioco.
