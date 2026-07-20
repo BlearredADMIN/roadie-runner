@@ -20,6 +20,7 @@ git -C "$DEPLOY" reset --hard origin/main
 # Copia SOLO i file pubblici
 cp index.html "$DEPLOY/"
 cp manifest.json "$DEPLOY/"
+cp CNAME "$DEPLOY/"          # dominio custom game.blearred.com (senza, Pages lo perde)
 mkdir -p "$DEPLOY/assets"
 cp assets/icon-180.png assets/icon-192.png assets/icon-512.png "$DEPLOY/assets/"
 
